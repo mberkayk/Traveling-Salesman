@@ -5,7 +5,6 @@
 #include "segment.h"
 #include "quadtree.h"
 
-//Comment to try git
 CityView::CityView() : QGraphicsScene() {
     this->cities = new QVector3D[numOfCities]; // z coordinate of the QVector3D is the index or the "id" of the city
     this->tourPolygon = QPolygon(); // polygon object for visualization
