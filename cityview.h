@@ -3,6 +3,7 @@
 
 #include <QGraphicsScene>
 #include <QVector3D>
+#include "segment.h"
 
 class CityView : public QGraphicsScene {
 
@@ -15,6 +16,7 @@ private:
 
     void nearestNeighbour();
     void greedy();
+    QVector<QVector<int>> perms(QVector<int> &, QVector<int> &);
     void divAndConq();
 
     QPolygon tourPolygon;

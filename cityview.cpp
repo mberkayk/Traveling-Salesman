@@ -2,7 +2,6 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDebug>
-#include "segment.h"
 #include "quadtree.h"
 
 CityView::CityView() : QGraphicsScene() {
@@ -144,15 +143,76 @@ void CityView::greedy(){
     }
 }
 
+QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
+    QVector<QVector<int>> result = QVector<QVector<int>>();
+    for(int i = 0; i < orig.length(); i++){
+        QVector<int> tempPerm = perm;
+        tempPerm.append(orig.at(i));
+
+        QVector<int> tempOrig = orig;
+        tempOrig.removeAt(i);
+
+        if(tempOrig.length() == 0){
+            result.append(tempPerm);
+            return result;
+        }else{
+            result.append(perms(tempOrig, tempPerm));
+        }
+    }
+    return result;
+}
+
 void CityView::divAndConq(){
-    QuadTree qTree = QuadTree(0, 0, 8000, 5000);
-    QuadTree::limit = 5;
-    for(int i = 0; i < numOfCities; i++){
+    QuadTree qTree = QuadTree(0, 0, 8000, 5000); // construct a quad tree that spans the range of(0,0,8000,5000) rectangle
+    QuadTree::limit = 6; // the number of cities a branch can hold before getting divided into four new branches
+    for(int i = 0; i < numOfCities; i++){// insert all the cities into the quadtree
         qTree.insert(cities[i]);
     }
     QVector<QuadTree> sections = QVector<QuadTree>();
-    qTree.getAllNonEmptySections(sections);
+    qTree.getAllNonEmptySections(sections); // get all the non-empty branches of the quadTree into the sections Vector
 
+    QVector<Segment> segs = QVector<Segment>(); // segments of shortest paths
+    //iterate through all the non-empty branches to construct a set of segments
+    for(int i = 0; i < sections.length(); i++){
+        QuadTree qTree = sections.at(i);
+        if(qTree.points.length() == 1){ // if the branch has 1 city
+            continue;
+        }else if(qTree.points.length() == 2 || qTree.points.length() == 3){ // if the brach has 2 cities
+            segs.append(qTree.points);
+        }else{ //if the branch has more than 3 cities use exhaustive search
+            QVector<int> orig = QVector<int>();
+            for(int j = 0; j < qTree.points.length(); j++){
+                orig.append(j);
+            }
+            QVector<int> tempPerm = QVector<int>();
+            QVector<QVector<int>> perm = perms(orig, tempPerm); //all the permutations of indices of points in the section
+            //Find the perm with the shortest tour length
+            Segment shortest = Segment(qTree.points);
+            float minDist = shortest.tourLength();
+            int indexOfSegWithMinDist = 0; //index in the perm vector
+            for(int j = 1; j < perm.length(); j++){
+                //construct the segment
+                Segment s  = Segment();
+                for(int k = 0; k < qTree.points.length(); k++){
+                    s.points.append(qTree.points.at(perm.at(j).at(k)));
+                }
+                //compare it to the shortest segment
+                float currentTourLength = s.tourLength();
+                if(currentTourLength < minDist){ // if it is shorter than the shortest segment
+                    minDist = currentTourLength; //then make this the shortest segment
+                    indexOfSegWithMinDist = j; // index in the perm vector
+                }
+            }
+
+            shortest.points.clear();
+            for(int j = 0; j < qTree.points.length(); j++){
+                shortest.points.append(qTree.points.at(perm.at(indexOfSegWithMinDist).at(j)));
+            }
+            segs.append(shortest); // append the tour with the shortest length to segs
+        }
+    }
+
+    //TODO: Now find the shortest tour among the shortest segments
 
 }
 

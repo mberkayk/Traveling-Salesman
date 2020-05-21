@@ -13,6 +13,7 @@ public:
     QVector<QVector3D> points;
     float minDist(Segment &s);
     void converge(Segment &s);
+    float tourLength();
     QVector3D front();
     QVector3D back();
 };

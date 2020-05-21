@@ -63,7 +63,7 @@ void QuadTree::getAllNonEmptySections(QVector<QuadTree> &t){
         children[1]->getAllNonEmptySections(t);
         children[2]->getAllNonEmptySections(t);
         children[3]->getAllNonEmptySections(t);
-    }else{
+    }else if (this->points.length() != 0){
         t.append(*this);
     }
 }

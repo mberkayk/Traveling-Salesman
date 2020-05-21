@@ -65,6 +65,14 @@ void Segment::converge(Segment &s){
 
 }
 
+float Segment::tourLength(){
+    float result = 0;
+    for(int i = 0; i < this->points.length() - 1; i++){
+        result += this->points.at(i).distanceToPoint(this->points.at(i+1));
+    }
+    result += this->points.last().distanceToPoint(this->points.first());
+    return result;
+}
 // return the city at the front end of the segment
 QVector3D Segment::front(){
     return this->points.front();
