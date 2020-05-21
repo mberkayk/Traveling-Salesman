@@ -2,6 +2,10 @@
 #include <QString>
 #include <QDebug>
 
+Segment::Segment(){
+    this->points = QVector<QVector3D>();
+}
+
 Segment::Segment(QVector<QVector3D> &p) {
     foreach(QVector3D point, p){
         this->points.append(point);
@@ -26,6 +30,10 @@ float Segment::minDist(Segment &s) {
 
 //joins the segment (passed as a paremeter to this function) this segment in the shortest way
 void Segment::converge(Segment &s){
+    if(this->points.isEmpty()){
+        points.append(s.points);
+        return;
+    }
     //First half of this function is just like the minDist function but instead of being concerned with the distance
     //we're concerned with the orientation
     QString orientation = "ftof"; //front to front

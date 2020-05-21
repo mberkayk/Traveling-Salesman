@@ -28,8 +28,11 @@ CityView::CityView() : QGraphicsScene() {
 //    nearestNeighbour();
 //    greedy();
     divAndConq();
-//    visualizeTour();
+    visualizeTour();
 
+//    for(int i = 0 ; i < numOfCities; i++){
+//        qDebug() << tour[i];
+//    }
 }
 
 void CityView::parseFile(){
@@ -144,6 +147,10 @@ void CityView::greedy(){
 }
 
 QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
+    if(orig.length() > 13) {
+        qDebug() << "Way too big";
+        return QVector<QVector<int>>();
+    }
     QVector<QVector<int>> result = QVector<QVector<int>>();
     for(int i = 0; i < orig.length(); i++){
         QVector<int> tempPerm = perm;
@@ -164,7 +171,7 @@ QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
 
 void CityView::divAndConq(){
     QuadTree qTree = QuadTree(0, 0, 8000, 5000); // construct a quad tree that spans the range of(0,0,8000,5000) rectangle
-    QuadTree::limit = 6; // the number of cities a branch can hold before getting divided into four new branches
+    QuadTree::limit = 9; // the number of cities a branch can hold before getting divided into four new branches
     for(int i = 0; i < numOfCities; i++){// insert all the cities into the quadtree
         qTree.insert(cities[i]);
     }
@@ -186,6 +193,7 @@ void CityView::divAndConq(){
             }
             QVector<int> tempPerm = QVector<int>();
             QVector<QVector<int>> perm = perms(orig, tempPerm); //all the permutations of indices of points in the section
+            if(perm.empty()) return;
             //Find the perm with the shortest tour length
             Segment shortest = Segment(qTree.points);
             float minDist = shortest.tourLength();
@@ -205,7 +213,7 @@ void CityView::divAndConq(){
             }
 
             shortest.points.clear();
-            for(int j = 0; j < qTree.points.length(); j++){
+            for(int j = 0; j < qTree.points.length(); j++){ //construct the segment from shortest perm
                 shortest.points.append(qTree.points.at(perm.at(indexOfSegWithMinDist).at(j)));
             }
             segs.append(shortest); // append the tour with the shortest length to segs
@@ -213,6 +221,49 @@ void CityView::divAndConq(){
     }
 
     //TODO: Now find the shortest tour among the shortest segments
+    QVector<int> orig = QVector<int>();
+    for(int i = 0; i < segs.length(); i++) orig.append(i);
+    QVector<int> permsArg = QVector<int>();
+    QVector<QVector<int>> perm = perms(orig, permsArg); //get the permutations of segments
+    if(perm.empty()) return;
+
+    //find the shortest overall tour
+    float minDist = 0;
+    for(int i = 0; i < perm.at(0).length()-1; i++){
+        Segment s = segs.at(perm.at(0).at(i));
+        Segment s2 = segs.at(perm.at(0).at(i+1));
+        minDist += s.minDist(s2);
+    }
+    Segment s = segs.at(perm.at(0).front());
+    Segment s2 = segs.at(perm.at(0).back());
+    minDist += s.minDist(s2);
+
+    int indexOfShortestPerm = 0;
+    for(int i = 1; i < perm.length(); i++){ //iterate through permutations of segments
+        float current = 0;
+        for(int j = 0; j < perm.at(i).length()-1; j++){ // iterate through indices of the permutation
+            Segment s = segs.at(perm.at(i).at(j));
+            Segment s2 = segs.at(perm.at(i).at(j+1));
+            current += s.minDist(s2);
+        }
+        Segment s = segs.at(perm.at(i).front());
+        Segment s2 = segs.at(perm.at(i).back());
+        current += s.minDist(s2);
+        if(current < minDist){
+            minDist = current;
+            indexOfShortestPerm = i;
+        }
+    }
+
+    Segment final = Segment();
+    for(int i = 0; i < perm.at(indexOfShortestPerm).length(); i++){
+        Segment s = segs.at(perm.at(indexOfShortestPerm).at(i));
+        final.converge(s);
+    }
+
+    for(int i = 0; i < numOfCities; i++){
+        tour[i] = final.points.at(i).z();
+    }
 
 }
 
