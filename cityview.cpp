@@ -147,7 +147,7 @@ void CityView::greedy(){
 }
 
 QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
-    if(orig.length() > 11) {
+    if(orig.length() > 10) {
         qDebug() << "Way too big";
         return QVector<QVector<int>>();
     }
@@ -171,7 +171,7 @@ QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
 
 void CityView::divAndConq(){
     QuadTree qTree = QuadTree(0, 0, 7800, 5200); // construct a quad tree that spans the range of(0,0,8000,5000) rectangle
-    QuadTree::limit = 8; // the number of cities a branch can hold before getting divided into four new branches
+    QuadTree::limit = 6; // the number of cities a branch can hold before getting divided into four new branches
     for(int i = 0; i < numOfCities; i++){// insert all the cities into the quadtree
         qTree.insert(cities[i]);
     }
@@ -183,7 +183,7 @@ void CityView::divAndConq(){
     for(int i = 0; i < sections.length(); i++){
         QuadTree qTree = sections.at(i);
         if(qTree.points.length() < 3){ // if the branch has 1 city or 2 cities
-            segs.append(qTree.points);
+            segs.append(Segment(qTree.points));
         }else{ //if the branch has 3 or more cities use exhaustive search
             QVector<int> orig = QVector<int>();
             for(int j = 0; j < qTree.points.length(); j++){
@@ -221,50 +221,40 @@ void CityView::divAndConq(){
         }
     }
 
-    // find the shortest tour among the shortest segments with freedy algorithm
-    QVector<int> orig = QVector<int>();
-    for(int i = 0; i < segs.length(); i++) orig.append(i);
-    QVector<int> permsArg = QVector<int>();
-    QVector<QVector<int>> perm = perms(orig, permsArg); //get the permutations of segments
-    if(perm.empty()) return;
-
-    //find the shortest overall tour
-    float minDist = 0;
-    for(int i = 0; i < perm.at(0).length()-1; i++){
-        Segment s = segs.at(perm.at(0).at(i));
-        Segment s2 = segs.at(perm.at(0).at(i+1));
-        minDist += s.minDist(s2);
-    }
-    Segment s = segs.at(perm.at(0).front());
-    Segment s2 = segs.at(perm.at(0).back());
-    minDist += s.minDist(s2);
-
-    int indexOfShortestPerm = 0;
-    for(int i = 1; i < perm.length(); i++){ //iterate through permutations of segments
-        float current = 0;
-        for(int j = 0; j < perm.at(i).length()-1; j++){ // iterate through indices of the permutation
-            Segment s = segs.at(perm.at(i).at(j));
-            Segment s2 = segs.at(perm.at(i).at(j+1));
-            current += s.minDist(s2);
+    // find the shortest tour among the shortest segments with greedy algorithm
+    while(segs.length() > 1){ // iterate until there is only one big segment
+        //get the two closest segments
+        float leastDist = 100000;
+        int seg1 = -1;
+        int seg2 = -1;
+        for(int i = 0; i < segs.length() ; i++){
+            for(int j = i+1; j < segs.length(); j++){
+                Segment t1 = segs.at(i);
+                Segment t2 = segs.at(j);
+                float currDist = t1.minDist(t2);
+                if(currDist < leastDist){
+                    leastDist = currDist;
+                    seg1 = i;
+                    seg2 = j;
+                }
+            }
         }
-        Segment s = segs.at(perm.at(i).front());
-        Segment s2 = segs.at(perm.at(i).back());
-        current += s.minDist(s2);
-        if(current < minDist){
-            minDist = current;
-            indexOfShortestPerm = i;
+        //after getting the two closest segments
+        Segment t1 = segs.at(seg1);
+        Segment t2 = segs.at(seg2);
+        t1.converge(t2); // converge them
+        segs.remove(seg1); //remove the two seperate segments from the list
+        if(seg1 < seg2){
+            segs.remove(seg2-1);
+        }else{
+            segs.remove(seg2);
         }
+        segs.append(t1); // add the new converged longer segment to the list
     }
 
     //construct the final tour
-    Segment final = Segment();
-    for(int i = 0; i < perm.at(indexOfShortestPerm).length(); i++){
-        Segment s = segs.at(perm.at(indexOfShortestPerm).at(i));
-        final.converge(s);
-    }
-
-    for(int i = 0; i < numOfCities-1; i++){ // put everything into tour
-        tour[i] = static_cast<int>(final.points.at(i).z());
+    for(int i = 0; i < numOfCities; i++){ // put everything into tour
+        tour[i] = static_cast<int>(segs.at(0).points.at(i).z());
     }
 
 }
