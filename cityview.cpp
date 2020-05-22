@@ -147,7 +147,7 @@ void CityView::greedy(){
 }
 
 QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
-    if(orig.length() > 13) {
+    if(orig.length() > 11) {
         qDebug() << "Way too big";
         return QVector<QVector<int>>();
     }
@@ -170,8 +170,8 @@ QVector<QVector<int>> CityView::perms(QVector<int> & orig, QVector<int> &perm){
 }
 
 void CityView::divAndConq(){
-    QuadTree qTree = QuadTree(0, 0, 8000, 5000); // construct a quad tree that spans the range of(0,0,8000,5000) rectangle
-    QuadTree::limit = 9; // the number of cities a branch can hold before getting divided into four new branches
+    QuadTree qTree = QuadTree(0, 0, 7800, 5200); // construct a quad tree that spans the range of(0,0,8000,5000) rectangle
+    QuadTree::limit = 8; // the number of cities a branch can hold before getting divided into four new branches
     for(int i = 0; i < numOfCities; i++){// insert all the cities into the quadtree
         qTree.insert(cities[i]);
     }
@@ -182,11 +182,9 @@ void CityView::divAndConq(){
     //iterate through all the non-empty branches to construct a set of segments
     for(int i = 0; i < sections.length(); i++){
         QuadTree qTree = sections.at(i);
-        if(qTree.points.length() == 1){ // if the branch has 1 city
-            continue;
-        }else if(qTree.points.length() == 2 || qTree.points.length() == 3){ // if the brach has 2 cities
+        if(qTree.points.length() < 3){ // if the branch has 1 city or 2 cities
             segs.append(qTree.points);
-        }else{ //if the branch has more than 3 cities use exhaustive search
+        }else{ //if the branch has 3 or more cities use exhaustive search
             QVector<int> orig = QVector<int>();
             for(int j = 0; j < qTree.points.length(); j++){
                 orig.append(j);
@@ -195,7 +193,10 @@ void CityView::divAndConq(){
             QVector<QVector<int>> perm = perms(orig, tempPerm); //all the permutations of indices of points in the section
             if(perm.empty()) return;
             //Find the perm with the shortest tour length
-            Segment shortest = Segment(qTree.points);
+            Segment shortest = Segment();
+            for(int k = 0; k < qTree.points.length(); k++){
+                shortest.points.append(qTree.points.at(perm.at(0).at(k)));
+            }
             float minDist = shortest.tourLength();
             int indexOfSegWithMinDist = 0; //index in the perm vector
             for(int j = 1; j < perm.length(); j++){
@@ -220,7 +221,7 @@ void CityView::divAndConq(){
         }
     }
 
-    //TODO: Now find the shortest tour among the shortest segments
+    // find the shortest tour among the shortest segments with freedy algorithm
     QVector<int> orig = QVector<int>();
     for(int i = 0; i < segs.length(); i++) orig.append(i);
     QVector<int> permsArg = QVector<int>();
@@ -255,14 +256,15 @@ void CityView::divAndConq(){
         }
     }
 
+    //construct the final tour
     Segment final = Segment();
     for(int i = 0; i < perm.at(indexOfShortestPerm).length(); i++){
         Segment s = segs.at(perm.at(indexOfShortestPerm).at(i));
         final.converge(s);
     }
 
-    for(int i = 0; i < numOfCities; i++){
-        tour[i] = final.points.at(i).z();
+    for(int i = 0; i < numOfCities-1; i++){ // put everything into tour
+        tour[i] = static_cast<int>(final.points.at(i).z());
     }
 
 }
